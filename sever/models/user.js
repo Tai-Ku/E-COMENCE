@@ -1,5 +1,6 @@
 const mongoose = require("mongoose"); // Erase if already required
 const bcrypt = require("bcrypt");
+const crypto = require("crypto");
 
 // Declare the Schema of the Mongo model
 var userSchema = new mongoose.Schema(
@@ -52,7 +53,9 @@ var userSchema = new mongoose.Schema(
   }
 );
 
+// khi có 1 hành động lưu  dữ liệu vào bảng thì nó sẽ chạy hàm này băm pass
 userSchema.pre("save", async function (next) {
+  // khi mà những  api nó không phải update thì nó sẽ bị trigger nên sẽ ngăn chụng nếu pass nó đã băm rồi thì sẽ next
   if (!this.isModified("password")) {
     next();
   }
@@ -63,6 +66,16 @@ userSchema.pre("save", async function (next) {
 userSchema.methods = {
   isCorrectPassword: async function (password) {
     return await bcrypt.compare(password, this.password);
+  },
+  createPasswordChangedToken: function () {
+    const resetToken = crypto.randomBytes(32).toString("hex");
+    this.passwordResetToken = crypto
+      .createHash("sha256")
+      .update(resetToken)
+      .digest("hex");
+    this.passwordResetExpire = Date.now() + 15 * 60 * 1000;
+
+    return resetToken;
   },
 };
 
